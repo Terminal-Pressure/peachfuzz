@@ -13,6 +13,7 @@ from .radar import to_json as radar_json, to_markdown as radar_markdown, strateg
 from .roadmap import to_json as roadmap_json, to_markdown as roadmap_markdown
 from .editions import edition_matrix_markdown
 from .self_refine import SelfRefinementEngine
+from .schema_mutators import SchemaAwareMutator, kind_names, parse_kinds
 
 
 def run_deterministic(args: argparse.Namespace) -> int:
@@ -94,6 +95,28 @@ def run_roadmap(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_schemas(args: argparse.Namespace) -> int:
+    mutator = SchemaAwareMutator(seed=args.seed)
+    kinds = parse_kinds(args.kind)
+    if args.import_openapi:
+        seeds = mutator.import_openapi_json(args.import_openapi)
+        output_dir = Path(args.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        files = []
+        for seed in seeds:
+            path = output_dir / "openapi" / f"{seed.name}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(seed.to_bytes())
+            files.append(str(path))
+        import json
+        print(json.dumps({"output_dir": str(output_dir), "count": len(files), "files": files}, indent=2, sort_keys=True))
+        return 0
+
+    result = mutator.write_corpus(args.output, kinds=kinds, count_per_seed=args.count)
+    print(result.to_json())
+    return 0
+
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="peachfuzz", description="PeachFuzz AI defensive fuzzing harness")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -126,6 +149,14 @@ def make_parser() -> argparse.ArgumentParser:
     backends.add_argument("--format", choices=["markdown", "json"], default="markdown")
     backends.add_argument("--include-unsafe", action="store_true", help="include disabled/sandbox-required backend stubs")
     backends.set_defaults(func=run_backends)
+
+    schemas = sub.add_parser("schemas", help="generate schema-aware local fuzz corpora")
+    schemas.add_argument("--kind", action="append", choices=["all"] + kind_names(), default=["all"])
+    schemas.add_argument("--count", type=int, default=4, help="mutations per built-in seed")
+    schemas.add_argument("--seed", type=int, default=1337)
+    schemas.add_argument("--output", default="corpus/generated/schema")
+    schemas.add_argument("--import-openapi", help="import a local OpenAPI JSON file into the corpus")
+    schemas.set_defaults(func=run_schemas)
 
     radar = sub.add_parser("radar", help="show competitive radar")
     radar.add_argument("--format", choices=["markdown", "json"], default="markdown")

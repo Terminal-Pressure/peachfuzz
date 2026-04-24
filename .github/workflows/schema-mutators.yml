@@ -1,0 +1,35 @@
+name: Schema Mutator CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/peachfuzz_ai/schema_mutators.py"
+      - "src/peachfuzz_ai/targets.py"
+      - "src/peachfuzz_ai/cli.py"
+      - "tests/test_schema_mutators.py"
+      - "docs/SCHEMA_MUTATORS.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-mutators:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - run: pytest -q tests/test_schema_mutators.py tests/test_targets.py
+      - run: peachfuzz schemas --kind all --count 2 --output corpus/generated/schema
+      - run: peachfuzz run --target openapi --backend deterministic --runs 25 corpus/generated/schema/openapi
+      - run: peachfuzz run --target graphql --backend deterministic --runs 25 corpus/generated/schema/graphql
+      - run: peachfuzz run --target webhook --backend deterministic --runs 25 corpus/generated/schema/webhook

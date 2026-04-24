@@ -1,0 +1,17 @@
+{
+  "endpoint": "/v1/agent/messages",
+  "body": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Generate a local-only fuzz report."
+      }
+    ],
+    "tools": [
+      {
+        "name": "report",
+        "requires_approval": false
+      }
+    ]
+  }
+}

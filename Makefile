@@ -68,3 +68,13 @@ backends:
 
 guardrails:
 	$(PYTHON) -m cactusfuzz.cli --target local-lab --scope local-lab --pack agent-guardrails --format markdown
+
+.PHONY: schemas fuzz-schemas
+
+schemas:
+	$(PYTHON) -m peachfuzz_ai.cli schemas --kind all --count 4 --output corpus/generated/schema
+
+fuzz-schemas: schemas
+	$(PYTHON) -m peachfuzz_ai.cli run --target openapi --backend deterministic --runs 100 corpus/generated/schema/openapi
+	$(PYTHON) -m peachfuzz_ai.cli run --target graphql --backend deterministic --runs 100 corpus/generated/schema/graphql
+	$(PYTHON) -m peachfuzz_ai.cli run --target webhook --backend deterministic --runs 100 corpus/generated/schema/webhook

@@ -25,3 +25,15 @@ def test_bytes_sentinel():
 def test_get_target_unknown():
     with pytest.raises(ValueError):
         get_target("shell")
+
+
+def test_structured_targets_reject_bad_shapes():
+    from peachfuzz_ai.targets import graphql_target, openapi_target, webhook_target
+    import pytest
+
+    with pytest.raises(ValueError):
+        openapi_target(b'{"openapi":"3.1.0","paths":{"relative":{"get":{}}}}')
+    with pytest.raises(ValueError):
+        graphql_target(b"query X { field ")
+    with pytest.raises(ValueError):
+        webhook_target(b'{"event": 123}')

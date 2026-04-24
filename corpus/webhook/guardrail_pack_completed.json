@@ -1,0 +1,12 @@
+{
+  "event": "guardrail.pack.completed",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "target": "local-lab",
+    "ok": true,
+    "passed": 6,
+    "failed": 0
+  }
+}

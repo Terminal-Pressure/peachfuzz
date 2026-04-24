@@ -142,3 +142,17 @@ cactusfuzz --target local-lab --scope local-lab --pack agent-guardrails --format
 ```
 
 The pack checks prompt-injection, unsafe tool routing, approval bypass, exfiltration, persistence, and benign local schema-fuzz controls without executing tools or contacting networks.
+
+
+## Schema-aware mutators
+
+PeachFuzz v0.4.3 adds local-only schema-aware corpus generation and parser targets.
+
+```bash
+peachfuzz schemas --kind all --count 4 --output corpus/generated/schema
+peachfuzz run --target openapi --backend deterministic --runs 250 corpus/generated/schema/openapi
+peachfuzz run --target graphql --backend deterministic --runs 250 corpus/generated/schema/graphql
+peachfuzz run --target webhook --backend deterministic --runs 250 corpus/generated/schema/webhook
+```
+
+These mutators generate structured local corpus files for JSON API envelopes, OpenAPI JSON, GraphQL documents, and webhook envelopes. They do not execute queries, contact networks, or deliver payloads.
