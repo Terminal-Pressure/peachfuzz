@@ -181,3 +181,13 @@ peachfuzz minimize-reports --report-dir reports --generate-reproducers
 ```
 
 The generated reproducer tests embed payloads safely with base64 and call only registered local PeachFuzz targets.
+
+
+## 100-test tool matrix
+
+PeachFuzz v0.4.6 adds exactly 100 individually named tests covering backend adapters, CactusFuzz guardrails, schema mutators, PeachTrace, crash minimization, pytest reproducer generation, and CLI integration.
+
+```bash
+pytest -q tests/test_tool_matrix_100.py
+pytest -q
+```

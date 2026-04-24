@@ -92,3 +92,8 @@ minimize-smoke:
 	$(PYTHON) -m peachfuzz_ai.cli minimize --target bytes reports/crashes/bytes-smoke.bin
 	$(PYTHON) -m peachfuzz_ai.cli reproduce --target bytes $$(ls reports/minimized/bytes-*.bin | head -n 1) --output tests/regression
 	$(PYTHON) -m pytest -q tests/regression
+
+.PHONY: test-100
+
+test-100:
+	$(PYTHON) -m pytest -q tests/test_tool_matrix_100.py
