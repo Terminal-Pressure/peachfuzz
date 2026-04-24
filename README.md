@@ -169,3 +169,15 @@ peachfuzz backends --include-unsafe
 ```
 
 Atheris is now legacy-optional. The built-in recommended coverage-style backend is `peachtrace`.
+
+## Crash minimization and pytest reproducers
+
+PeachFuzz v0.4.5 adds local-only crash minimization and pytest reproducer generation.
+
+```bash
+peachfuzz minimize --target graphql reports/crashes/graphql-example.bin
+peachfuzz reproduce --target graphql reports/minimized/graphql-example.bin --output tests/regression
+peachfuzz minimize-reports --report-dir reports --generate-reproducers
+```
+
+The generated reproducer tests embed payloads safely with base64 and call only registered local PeachFuzz targets.

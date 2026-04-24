@@ -83,3 +83,12 @@ fuzz-schemas: schemas
 
 peachtrace:
 	$(PYTHON) -m peachfuzz_ai.cli run --target json --backend peachtrace --runs 250 corpus/json_api
+
+.PHONY: minimize-smoke
+
+minimize-smoke:
+	mkdir -p reports/crashes
+	printf 'PEACHFUZZ_CRASH_SENTINEL trailing data' > reports/crashes/bytes-smoke.bin
+	$(PYTHON) -m peachfuzz_ai.cli minimize --target bytes reports/crashes/bytes-smoke.bin
+	$(PYTHON) -m peachfuzz_ai.cli reproduce --target bytes $$(ls reports/minimized/bytes-*.bin | head -n 1) --output tests/regression
+	$(PYTHON) -m pytest -q tests/regression

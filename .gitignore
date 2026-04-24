@@ -8,3 +8,11 @@ build/
 dist/
 *.egg-info/
 reports/
+
+corpus/generated/
+
+tests/regression/
+
+reports/minimized/
+
+reports/reproducers/

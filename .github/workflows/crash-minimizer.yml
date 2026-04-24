@@ -1,0 +1,38 @@
+name: Crash Minimizer CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/peachfuzz_ai/minimizer.py"
+      - "src/peachfuzz_ai/reproducer.py"
+      - "src/peachfuzz_ai/cli.py"
+      - "tests/test_minimizer.py"
+      - "tests/test_reproducer.py"
+      - "docs/CRASH_MINIMIZATION.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crash-minimizer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - run: pytest -q tests/test_minimizer.py tests/test_reproducer.py
+      - run: |
+          mkdir -p reports/crashes
+          printf 'PEACHFUZZ_CRASH_SENTINEL trailing data' > reports/crashes/bytes-smoke.bin
+          peachfuzz minimize --target bytes reports/crashes/bytes-smoke.bin
+          peachfuzz reproduce --target bytes "$(ls reports/minimized/bytes-*.bin | head -n 1)" --output tests/regression
+          pytest -q tests/regression

@@ -14,6 +14,8 @@ from .roadmap import to_json as roadmap_json, to_markdown as roadmap_markdown
 from .editions import edition_matrix_markdown
 from .self_refine import SelfRefinementEngine
 from .schema_mutators import SchemaAwareMutator, kind_names, parse_kinds
+from .minimizer import CrashSignature, DeltaMinimizer, MinimizeRequest, write_minimized_result
+from .reproducer import ReproducerRequest, write_pytest_reproducer
 
 
 def run_deterministic(args: argparse.Namespace) -> int:
@@ -122,6 +124,108 @@ def run_schemas(args: argparse.Namespace) -> int:
     return 0
 
 
+def _signature_from_args(args: argparse.Namespace, payload: bytes, target_name: str) -> CrashSignature:
+    if args.expected_exception:
+        return CrashSignature(args.expected_exception, args.expected_message or "")
+    return DeltaMinimizer(get_target(target_name), target_name).infer_signature(payload)
+
+
+def run_minimize(args: argparse.Namespace) -> int:
+    target_name = validate_target_name(args.target)
+    payload = Path(args.payload).read_bytes()
+    signature = _signature_from_args(args, payload, target_name)
+    minimizer = DeltaMinimizer(get_target(target_name), target_name)
+    result, minimized = minimizer.minimize(
+        MinimizeRequest(
+            target_name=target_name,
+            payload=payload,
+            signature=signature,
+            max_rounds=args.max_rounds,
+        )
+    )
+    payload_path, json_path = write_minimized_result(result, minimized, args.output)
+    print(result.to_json())
+    print(f"payload={payload_path}")
+    print(f"metadata={json_path}")
+    return 0 if result.reproduced else 1
+
+
+def run_reproduce(args: argparse.Namespace) -> int:
+    target_name = validate_target_name(args.target)
+    payload = Path(args.payload).read_bytes()
+    signature = _signature_from_args(args, payload, target_name)
+    result = write_pytest_reproducer(
+        ReproducerRequest(
+            target_name=target_name,
+            payload=payload,
+            signature=signature,
+            test_name=args.test_name,
+        ),
+        output_dir=args.output,
+    )
+    print(result.to_json())
+    return 0
+
+
+def run_minimize_reports(args: argparse.Namespace) -> int:
+    import json
+
+    report_dir = Path(args.report_dir)
+    crash_dir = report_dir / "crashes"
+    output_dir = Path(args.output)
+    reproducer_dir = Path(args.reproducer_output)
+    processed: list[dict[str, object]] = []
+
+    if not crash_dir.exists():
+        print(json.dumps({"processed": [], "count": 0, "message": f"no crash dir found: {crash_dir}"}, indent=2))
+        return 0
+
+    for payload_path in sorted(crash_dir.glob("*.bin")):
+        metadata_path = payload_path.with_suffix(".json")
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            target_name = validate_target_name(str(metadata.get("target_name", args.target or "")))
+            signature = CrashSignature(
+                str(metadata.get("exception_type", args.expected_exception or "Exception")),
+                str(metadata.get("message", args.expected_message or "")),
+            )
+        else:
+            if not args.target:
+                continue
+            target_name = validate_target_name(args.target)
+            signature = CrashSignature(args.expected_exception or "Exception", args.expected_message or "")
+
+        payload = payload_path.read_bytes()
+        minimizer = DeltaMinimizer(get_target(target_name), target_name)
+        result, minimized = minimizer.minimize(
+            MinimizeRequest(
+                target_name=target_name,
+                payload=payload,
+                signature=signature,
+                max_rounds=args.max_rounds,
+            )
+        )
+        minimized_path, minimized_json = write_minimized_result(result, minimized, output_dir)
+        repro = None
+        if args.generate_reproducers and result.reproduced:
+            repro = write_pytest_reproducer(
+                ReproducerRequest(target_name=target_name, payload=minimized, signature=result.signature),
+                output_dir=reproducer_dir,
+            )
+        processed.append(
+            {
+                "source": str(payload_path),
+                "minimized_payload": str(minimized_path),
+                "minimized_metadata": str(minimized_json),
+                "reproducer": None if repro is None else repro.output_path,
+                "result": result.to_dict(),
+            }
+        )
+
+    print(json.dumps({"processed": processed, "count": len(processed)}, indent=2, sort_keys=True))
+    return 0
+
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="peachfuzz", description="PeachFuzz AI defensive fuzzing harness")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -172,6 +276,35 @@ def make_parser() -> argparse.ArgumentParser:
     schemas.add_argument("--output", default="corpus/generated/schema")
     schemas.add_argument("--import-openapi", help="import a local OpenAPI JSON file into the corpus")
     schemas.set_defaults(func=run_schemas)
+
+    minimize = sub.add_parser("minimize", help="minimize one local crash payload")
+    minimize.add_argument("--target", choices=target_names(), required=True)
+    minimize.add_argument("--expected-exception", help="expected exception type; inferred when omitted")
+    minimize.add_argument("--expected-message", default="", help="expected exception message substring")
+    minimize.add_argument("--max-rounds", type=int, default=8)
+    minimize.add_argument("--output", default="reports/minimized")
+    minimize.add_argument("payload", help="crash payload file")
+    minimize.set_defaults(func=run_minimize)
+
+    reproduce = sub.add_parser("reproduce", help="generate a pytest reproducer for one crash payload")
+    reproduce.add_argument("--target", choices=target_names(), required=True)
+    reproduce.add_argument("--expected-exception", help="expected exception type; inferred when omitted")
+    reproduce.add_argument("--expected-message", default="", help="expected exception message substring")
+    reproduce.add_argument("--output", default="tests/regression")
+    reproduce.add_argument("--test-name")
+    reproduce.add_argument("payload", help="crash or minimized payload file")
+    reproduce.set_defaults(func=run_reproduce)
+
+    minimize_reports = sub.add_parser("minimize-reports", help="bulk minimize reports/crashes and optionally generate pytest reproducers")
+    minimize_reports.add_argument("--report-dir", default="reports")
+    minimize_reports.add_argument("--output", default="reports/minimized")
+    minimize_reports.add_argument("--reproducer-output", default="tests/regression")
+    minimize_reports.add_argument("--generate-reproducers", action="store_true")
+    minimize_reports.add_argument("--target", choices=target_names())
+    minimize_reports.add_argument("--expected-exception")
+    minimize_reports.add_argument("--expected-message", default="")
+    minimize_reports.add_argument("--max-rounds", type=int, default=8)
+    minimize_reports.set_defaults(func=run_minimize_reports)
 
     radar = sub.add_parser("radar", help="show competitive radar")
     radar.add_argument("--format", choices=["markdown", "json"], default="markdown")
