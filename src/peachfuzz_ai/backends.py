@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .engine import PeachFuzzEngine
+from .peachtrace import PeachTraceEngine
 from .models import FuzzRunResult
 
 
@@ -21,7 +22,8 @@ class BackendKind(str, Enum):
     """Known fuzz backend categories."""
 
     DETERMINISTIC = "deterministic"
-    ATHERIS = "atheris"
+    PEACHTRACE = "peachtrace"
+    ATHERIS = "atheris-legacy"
     EXTERNAL_SANDBOX = "external-sandbox"
 
 
@@ -132,6 +134,36 @@ class DeterministicBackend:
         )
 
 
+class PeachTraceBackend:
+    """Dependency-free trace-guided Python backend powered by PeachTrace."""
+
+    capabilities = BackendCapabilities(
+        name="peachtrace",
+        kind=BackendKind.PEACHTRACE,
+        description="Pure-Python trace-guided fuzzing backend; no Atheris/libFuzzer dependency.",
+        coverage_guided=True,
+        in_process=True,
+    )
+
+    def run(self, request: BackendRunRequest) -> BackendRunOutcome:
+        engine = PeachTraceEngine(
+            request.target,
+            request.target_name,
+            report_dir=request.report_dir,
+            seed=request.seed,
+        )
+        trace_result = engine.run(request.corpus, runs=request.runs)
+        return BackendRunOutcome(
+            backend=self.capabilities.name,
+            result=trace_result.fuzz_result,
+            status="ok",
+            detail=(
+                f"coverage_points={trace_result.stats.coverage_points}; "
+                f"interesting_inputs={trace_result.stats.interesting_inputs}"
+            ),
+        )
+
+
 class AtherisBackend:
     """Coverage-guided Python backend wrapper.
 
@@ -142,9 +174,9 @@ class AtherisBackend:
     """
 
     capabilities = BackendCapabilities(
-        name="atheris",
+        name="atheris-legacy",
         kind=BackendKind.ATHERIS,
-        description="Optional coverage-guided Python fuzzing backend.",
+        description="Legacy optional Atheris adapter; PeachTrace is the dependency-free default.",
         coverage_guided=True,
         in_process=True,
     )
@@ -157,7 +189,7 @@ class AtherisBackend:
                 backend=self.capabilities.name,
                 result=None,
                 status="unavailable",
-                detail="atheris is not installed; install with: python -m pip install 'peachfuzz-ai[fuzz]'",
+                detail="atheris is not installed; prefer dependency-free --backend peachtrace",
             )
 
         def test_one_input(data: bytes) -> None:
@@ -204,7 +236,8 @@ class ExternalSandboxBackend:
 
 _BACKENDS: dict[str, BackendAdapter] = {
     "deterministic": DeterministicBackend(),
-    "atheris": AtherisBackend(),
+    "peachtrace": PeachTraceBackend(),
+    "atheris-legacy": AtherisBackend(),
     "external-sandbox": ExternalSandboxBackend(),
 }
 

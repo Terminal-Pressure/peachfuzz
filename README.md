@@ -156,3 +156,16 @@ peachfuzz run --target webhook --backend deterministic --runs 250 corpus/generat
 ```
 
 These mutators generate structured local corpus files for JSON API envelopes, OpenAPI JSON, GraphQL documents, and webhook envelopes. They do not execute queries, contact networks, or deliver payloads.
+
+
+## PeachTrace dependency-free trace-guided fuzzing
+
+PeachFuzz v0.4.4 adds **PeachTrace**, a pure-Python Atheris-inspired backend with no native fuzzing dependency.
+
+```bash
+peachfuzz run --target json --backend peachtrace --runs 500 corpus/json_api
+peachfuzz peachtrace --target openapi --runs 500 corpus/openapi
+peachfuzz backends --include-unsafe
+```
+
+Atheris is now legacy-optional. The built-in recommended coverage-style backend is `peachtrace`.

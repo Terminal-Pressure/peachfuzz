@@ -36,6 +36,11 @@ def run_deterministic(args: argparse.Namespace) -> int:
     return 1 if args.fail_on_crash and not outcome.ok else 0
 
 
+def run_peachtrace(args: argparse.Namespace) -> int:
+    args.backend = "peachtrace"
+    return run_deterministic(args)
+
+
 def run_atheris(args: argparse.Namespace) -> int:
     target_name = validate_target_name(args.target)
     target = get_target(target_name)
@@ -131,7 +136,17 @@ def make_parser() -> argparse.ArgumentParser:
     run.add_argument("corpus", nargs="*", help="corpus files or directories")
     run.set_defaults(func=run_deterministic)
 
-    ath = sub.add_parser("atheris", help="run atheris coverage-guided fuzzing")
+
+    trace = sub.add_parser("peachtrace", help="run dependency-free trace-guided fuzzing")
+    trace.add_argument("--target", choices=target_names(), required=True)
+    trace.add_argument("--runs", type=int, default=1000)
+    trace.add_argument("--seed", type=int, default=1337)
+    trace.add_argument("--report-dir", default="reports")
+    trace.add_argument("--fail-on-crash", action="store_true")
+    trace.add_argument("corpus", nargs="*", help="corpus files or directories")
+    trace.set_defaults(func=run_peachtrace)
+
+    ath = sub.add_parser("atheris", help="legacy optional Atheris fuzzing; prefer: peachfuzz run --backend peachtrace")
     ath.add_argument("--target", choices=target_names(), required=True)
     ath.add_argument("corpus", nargs="*", type=Path)
     ath.add_argument("atheris_args", nargs=argparse.REMAINDER)

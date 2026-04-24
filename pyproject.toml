@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "peachfuzz-ai"
-version = "0.4.3"
+version = "0.4.4"
 description = "Defensive AI-assisted fuzzing harness with crash triage and self-refinement advisories"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = {text = "Apache-2.0"}
 authors = [
   {name = "CyberViser / 0AI", email = "0ai@cyberviserai.com"}
 ]
-keywords = ["fuzzing", "security", "atheris", "harness", "ai", "defensive-security"]
+keywords = ["fuzzing", "security", "harness", "ai", "defensive-security"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -25,7 +25,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "pytest-cov>=5.0.0", "ruff>=0.6.0", "mypy>=1.10.0"]
-fuzz = ["atheris>=2.3.0"]
+fuzz = []  # intentionally dependency-free; use built-in PeachTrace backend
 
 [project.scripts]
 peachfuzz = "peachfuzz_ai.cli:main"

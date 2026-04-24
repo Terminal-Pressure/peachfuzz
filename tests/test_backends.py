@@ -63,6 +63,13 @@ def test_external_backend_blocks_by_default(tmp_path):
 
 
 def test_atheris_backend_metadata():
-    backend = get_backend("atheris")
+    backend = get_backend("atheris-legacy")
     assert backend.capabilities.coverage_guided
     assert backend.capabilities.in_process
+
+
+def test_peachtrace_backend_metadata():
+    backend = get_backend("peachtrace")
+    assert backend.capabilities.coverage_guided
+    assert backend.capabilities.safe_by_default
+    assert "Pure-Python" in backend.capabilities.description
