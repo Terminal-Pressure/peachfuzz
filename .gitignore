@@ -16,3 +16,9 @@ tests/regression/
 reports/minimized/
 
 reports/reproducers/
+
+# generated runtime artifacts
+reports/*.json
+reports/crashes/*
+data/datasets/*.jsonl
+data/hancock_fuzz_v*.jsonl
