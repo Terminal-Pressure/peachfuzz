@@ -5,17 +5,26 @@ import argparse
 import sys
 from pathlib import Path
 
+from .backends import (
+    BackendRunRequest,
+    backend_matrix_json,
+    backend_matrix_markdown,
+    backend_names,
+    get_backend,
+)
+from .editions import edition_matrix_markdown
 from .engine import load_corpus
 from .guardrails import validate_target_name
-from .targets import get_target, target_names
-from .backends import BackendRunRequest, backend_matrix_json, backend_matrix_markdown, backend_names, get_backend
-from .radar import to_json as radar_json, to_markdown as radar_markdown, strategic_thesis
-from .roadmap import to_json as roadmap_json, to_markdown as roadmap_markdown
-from .editions import edition_matrix_markdown
-from .self_refine import SelfRefinementEngine
-from .schema_mutators import SchemaAwareMutator, kind_names, parse_kinds
 from .minimizer import CrashSignature, DeltaMinimizer, MinimizeRequest, write_minimized_result
+from .radar import strategic_thesis
+from .radar import to_json as radar_json
+from .radar import to_markdown as radar_markdown
 from .reproducer import ReproducerRequest, write_pytest_reproducer
+from .roadmap import to_json as roadmap_json
+from .roadmap import to_markdown as roadmap_markdown
+from .schema_mutators import SchemaAwareMutator, kind_names, parse_kinds
+from .self_refine import SelfRefinementEngine
+from .targets import get_target, target_names
 
 
 def run_deterministic(args: argparse.Namespace) -> int:
@@ -49,13 +58,17 @@ def run_atheris(args: argparse.Namespace) -> int:
     try:
         import atheris  # type: ignore
     except ImportError:
-        print("atheris is not installed. Run: python -m pip install 'peachfuzz-ai[fuzz]'", file=sys.stderr)
+        msg = "atheris is not installed. Run: python -m pip install 'peachfuzz-ai[fuzz]'"
+        print(msg, file=sys.stderr)
         return 2
 
     def test_one_input(data: bytes) -> None:
         target(data)
 
-    atheris.Setup(sys.argv[:1] + args.atheris_args + [str(p) for p in args.corpus], test_one_input)
+    atheris.Setup(
+        sys.argv[:1] + args.atheris_args + [str(p) for p in args.corpus],
+        test_one_input,
+    )
     atheris.Fuzz()
     return 0
 
@@ -75,7 +88,8 @@ def run_editions(args: argparse.Namespace) -> int:
 def run_backends(args: argparse.Namespace) -> int:
     if args.format == "json":
         import json
-        print(json.dumps(backend_matrix_json(include_unsafe=args.include_unsafe), indent=2, sort_keys=True))
+        data = backend_matrix_json(include_unsafe=args.include_unsafe)
+        print(json.dumps(data, indent=2, sort_keys=True))
     else:
         print("# PeachFuzz/CactusFuzz Backend Matrix\n")
         print(backend_matrix_markdown(include_unsafe=args.include_unsafe))
@@ -116,15 +130,18 @@ def run_schemas(args: argparse.Namespace) -> int:
             path.write_bytes(seed.to_bytes())
             files.append(str(path))
         import json
-        print(json.dumps({"output_dir": str(output_dir), "count": len(files), "files": files}, indent=2, sort_keys=True))
+        output = {"output_dir": str(output_dir), "count": len(files), "files": files}
+        print(json.dumps(output, indent=2, sort_keys=True))
         return 0
 
-    result = mutator.write_corpus(args.output, kinds=kinds, count_per_seed=args.count)
-    print(result.to_json())
+    corpus_result = mutator.write_corpus(args.output, kinds=kinds, count_per_seed=args.count)
+    print(corpus_result.to_json())
     return 0
 
 
-def _signature_from_args(args: argparse.Namespace, payload: bytes, target_name: str) -> CrashSignature:
+def _signature_from_args(
+    args: argparse.Namespace, payload: bytes, target_name: str
+) -> CrashSignature:
     if args.expected_exception:
         return CrashSignature(args.expected_exception, args.expected_message or "")
     return DeltaMinimizer(get_target(target_name), target_name).infer_signature(payload)
@@ -177,14 +194,17 @@ def run_minimize_reports(args: argparse.Namespace) -> int:
     processed: list[dict[str, object]] = []
 
     if not crash_dir.exists():
-        print(json.dumps({"processed": [], "count": 0, "message": f"no crash dir found: {crash_dir}"}, indent=2))
+        msg = {"processed": [], "count": 0, "message": f"no crash dir found: {crash_dir}"}
+        print(json.dumps(msg, indent=2))
         return 0
 
     for payload_path in sorted(crash_dir.glob("*.bin")):
         metadata_path = payload_path.with_suffix(".json")
         if metadata_path.exists():
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-            target_name = validate_target_name(str(metadata.get("target_name", args.target or "")))
+            target_name = validate_target_name(
+                str(metadata.get("target_name", args.target or ""))
+            )
             signature = CrashSignature(
                 str(metadata.get("exception_type", args.expected_exception or "Exception")),
                 str(metadata.get("message", args.expected_message or "")),
@@ -193,7 +213,10 @@ def run_minimize_reports(args: argparse.Namespace) -> int:
             if not args.target:
                 continue
             target_name = validate_target_name(args.target)
-            signature = CrashSignature(args.expected_exception or "Exception", args.expected_message or "")
+            signature = CrashSignature(
+                args.expected_exception or "Exception",
+                args.expected_message or "",
+            )
 
         payload = payload_path.read_bytes()
         minimizer = DeltaMinimizer(get_target(target_name), target_name)
@@ -208,10 +231,12 @@ def run_minimize_reports(args: argparse.Namespace) -> int:
         minimized_path, minimized_json = write_minimized_result(result, minimized, output_dir)
         repro = None
         if args.generate_reproducers and result.reproduced:
-            repro = write_pytest_reproducer(
-                ReproducerRequest(target_name=target_name, payload=minimized, signature=result.signature),
-                output_dir=reproducer_dir,
+            req = ReproducerRequest(
+                target_name=target_name,
+                payload=minimized,
+                signature=result.signature,
             )
+            repro = write_pytest_reproducer(req, output_dir=reproducer_dir)
         processed.append(
             {
                 "source": str(payload_path),
@@ -222,12 +247,15 @@ def run_minimize_reports(args: argparse.Namespace) -> int:
             }
         )
 
-    print(json.dumps({"processed": processed, "count": len(processed)}, indent=2, sort_keys=True))
+    out = json.dumps({"processed": processed, "count": len(processed)}, indent=2, sort_keys=True)
+    print(out)
     return 0
 
 
 def make_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="peachfuzz", description="PeachFuzz AI defensive fuzzing harness")
+    parser = argparse.ArgumentParser(
+        prog="peachfuzz", description="PeachFuzz AI defensive fuzzing harness"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="run deterministic fallback fuzzing")
@@ -250,7 +278,9 @@ def make_parser() -> argparse.ArgumentParser:
     trace.add_argument("corpus", nargs="*", help="corpus files or directories")
     trace.set_defaults(func=run_peachtrace)
 
-    ath = sub.add_parser("atheris", help="legacy optional Atheris fuzzing; prefer: peachfuzz run --backend peachtrace")
+    ath = sub.add_parser(
+        "atheris", help="legacy Atheris fuzzing; prefer: peachfuzz run --backend peachtrace"
+    )
     ath.add_argument("--target", choices=target_names(), required=True)
     ath.add_argument("corpus", nargs="*", type=Path)
     ath.add_argument("atheris_args", nargs=argparse.REMAINDER)
@@ -266,7 +296,10 @@ def make_parser() -> argparse.ArgumentParser:
 
     backends = sub.add_parser("backends", help="show fuzz backend safety matrix")
     backends.add_argument("--format", choices=["markdown", "json"], default="markdown")
-    backends.add_argument("--include-unsafe", action="store_true", help="include disabled/sandbox-required backend stubs")
+    backends.add_argument(
+        "--include-unsafe", action="store_true",
+        help="include disabled/sandbox-required backend stubs"
+    )
     backends.set_defaults(func=run_backends)
 
     schemas = sub.add_parser("schemas", help="generate schema-aware local fuzz corpora")
