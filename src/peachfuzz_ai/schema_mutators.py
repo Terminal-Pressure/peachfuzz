@@ -187,6 +187,7 @@ class SchemaAwareMutator:
         """Generate deterministic structured variants from one seed."""
         variants: list[SchemaSeed] = []
         for idx in range(max(0, count)):
+            payload: Any
             if seed.kind == SchemaKind.JSON_API:
                 payload = self._mutate_json_api(dict(seed.payload))
             elif seed.kind == SchemaKind.OPENAPI:
