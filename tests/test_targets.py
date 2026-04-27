@@ -37,8 +37,9 @@ class TestJsonApiTarget:
     def test_valid_payload_with_body(self) -> None:
         json_api_target(b'{"endpoint":"/api/test","body":{"key":"value"}}')
 
-    def test_empty_endpoint_accepts(self) -> None:
-        json_api_target(b'{"endpoint":""}')
+    def test_empty_endpoint_does_not_raise(self) -> None:
+        """Empty endpoint should be accepted without raising an exception."""
+        json_api_target(b'{"endpoint":""}')  # No exception means success
 
 
 class TestFindingsTarget:

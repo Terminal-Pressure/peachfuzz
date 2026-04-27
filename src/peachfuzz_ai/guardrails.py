@@ -2,22 +2,21 @@
 from __future__ import annotations
 
 import re
+import functools
 from urllib.parse import urlparse
 
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,7}\b")
 _IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 
-# Dynamically sync with the targets registry rather than hardcoding
-_ALLOWED_TARGETS: frozenset[str] | None = None
 
-
+@functools.lru_cache(maxsize=1)
 def _get_allowed_targets() -> frozenset[str]:
-    """Lazy-load allowed targets from the registry to avoid circular imports."""
-    global _ALLOWED_TARGETS
-    if _ALLOWED_TARGETS is None:
-        from .targets import target_names
-        _ALLOWED_TARGETS = frozenset(target_names())
-    return _ALLOWED_TARGETS
+    """Load allowed targets from the registry.
+
+    Uses lru_cache for thread-safe memoization, avoiding explicit global state.
+    """
+    from .targets import target_names
+    return frozenset(target_names())
 
 
 def validate_target_name(target_name: str) -> str:

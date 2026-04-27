@@ -55,13 +55,17 @@ class TestDeepNest:
         assert result["endpoint"].startswith("/")
 
 
+# Number of iterations for mutation tests to ensure coverage of random branches
+MUTATION_TEST_ITERATIONS = 20
+
+
 class TestMutateJson:
     """Tests for mutate_json function."""
 
     def test_returns_valid_json(self) -> None:
         """Output should be valid JSON."""
         payload = json.dumps({"endpoint": "/v1/test"})
-        for _ in range(10):
+        for _ in range(MUTATION_TEST_ITERATIONS // 2):
             result = mutate_json(payload)
             # Should parse without error
             json.loads(result)
@@ -79,17 +83,16 @@ class TestMutateJson:
         assert isinstance(parsed, dict)
 
     def test_mutates_dict_payload(self) -> None:
-        """Should mutate dict payload."""
+        """Should mutate dict payload through multiple random branches."""
         payload = json.dumps({"endpoint": "/test", "value": 123})
-        # Run multiple times to hit different branches
-        for _ in range(20):
+        for _ in range(MUTATION_TEST_ITERATIONS):
             result = mutate_json(payload)
             json.loads(result)  # Should be valid JSON
 
     def test_mutates_list_payload(self) -> None:
         """Should handle list payload."""
         payload = json.dumps([1, 2, 3])
-        for _ in range(10):
+        for _ in range(MUTATION_TEST_ITERATIONS // 2):
             result = mutate_json(payload)
             json.loads(result)
 

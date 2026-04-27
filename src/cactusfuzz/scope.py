@@ -89,7 +89,14 @@ class AuthorizationScope:
 
 
 def _try_parse_ip(value: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
-    """Try to parse a value as an IP address, return None if invalid."""
+    """Try to parse a value as an IP address.
+
+    Args:
+        value: String that may represent an IPv4 or IPv6 address.
+
+    Returns:
+        Parsed IP address object if valid, None otherwise.
+    """
     try:
         return ipaddress.ip_address(value)
     except ValueError:
