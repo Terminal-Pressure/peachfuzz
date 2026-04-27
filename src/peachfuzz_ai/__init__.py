@@ -1,6 +1,6 @@
 """PeachFuzz AI defensive fuzzing harness."""
 from .backends import BackendRunOutcome, BackendRunRequest, get_backend
-from .engine import FuzzFinding, FuzzRunResult, PeachFuzzEngine
+from .engine import FuzzFinding, FuzzRunResult, PeachFuzzEngine, load_corpus
 from .minimizer import DeltaMinimizer
 from .peachtrace import PeachTraceEngine
 from .reproducer import write_pytest_reproducer
@@ -20,6 +20,7 @@ __all__ = [
     "SelfRefinementEngine",
     "get_backend",
     "get_target",
+    "load_corpus",
     "write_pytest_reproducer",
 ]
-__version__ = "0.4.6"
+__version__ = "0.4.7"

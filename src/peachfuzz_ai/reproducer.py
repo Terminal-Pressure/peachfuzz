@@ -37,11 +37,12 @@ class ReproducerResult:
 
 
 def sanitize_identifier(value: str) -> str:
+    """Sanitize a string to be a valid Python identifier."""
     cleaned = re.sub(r"[^0-9a-zA-Z_]+", "_", value.strip().lower())
     cleaned = re.sub(r"_+", "_", cleaned).strip("_")
     if not cleaned:
         cleaned = "payload"
-    if cleaned[0].isdigit():
+    if cleaned and cleaned[0].isdigit():
         cleaned = f"_{cleaned}"
     return cleaned
 

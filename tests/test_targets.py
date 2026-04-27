@@ -166,3 +166,44 @@ class TestTargetRegistry:
     def test_target_names_sorted(self) -> None:
         names = target_names()
         assert names == sorted(names)
+
+
+class TestJsonApiTargetAdditional:
+    """Additional edge case tests for json_api_target."""
+
+    def test_unicode_endpoint(self) -> None:
+        """Unicode characters in endpoint should be handled."""
+        json_api_target(b'{"endpoint":"/v1/\xc3\xa9ndpoint"}')
+
+    def test_nested_empty_body(self) -> None:
+        """Empty nested body should be accepted."""
+        json_api_target(b'{"endpoint":"/v1/test","body":{"nested":{}}}')
+
+    def test_array_in_body(self) -> None:
+        """Array values in body should be accepted."""
+        json_api_target(b'{"endpoint":"/v1/test","body":{"items":[1,2,3]}}')
+
+
+class TestGraphqlTargetAdditional:
+    """Additional edge case tests for graphql_target."""
+
+    def test_multiline_query(self) -> None:
+        """Multiline query should be handled."""
+        graphql_target(b"query {\n  users {\n    name\n  }\n}")
+
+    def test_unicode_in_graphql(self) -> None:
+        """Unicode characters in GraphQL should be handled."""
+        graphql_target(b"query { users { name\xc3\xa9 } }")
+
+
+class TestWebhookTargetAdditional:
+    """Additional edge case tests for webhook_target."""
+
+    def test_minimal_valid_webhook(self) -> None:
+        """Minimal valid webhook with empty values."""
+        webhook_target(b'{}')
+
+    def test_null_body_is_ignored(self) -> None:
+        """Null body should not raise."""
+        webhook_target(b'{"event":"test","body":null}')
+
