@@ -149,7 +149,19 @@ def _signature_from_args(
 
 def run_minimize(args: argparse.Namespace) -> int:
     target_name = validate_target_name(args.target)
-    payload = Path(args.payload).read_bytes()
+    payload_path = Path(args.payload)
+    try:
+        payload = payload_path.read_bytes()
+    except FileNotFoundError:
+        print(f"Error: payload file not found: {payload_path}", file=sys.stderr)
+        return 2
+    except PermissionError:
+        print(f"Error: permission denied reading: {payload_path}", file=sys.stderr)
+        return 2
+    except OSError as e:
+        print(f"Error reading payload file: {e}", file=sys.stderr)
+        return 2
+
     signature = _signature_from_args(args, payload, target_name)
     minimizer = DeltaMinimizer(get_target(target_name), target_name)
     result, minimized = minimizer.minimize(
@@ -169,7 +181,19 @@ def run_minimize(args: argparse.Namespace) -> int:
 
 def run_reproduce(args: argparse.Namespace) -> int:
     target_name = validate_target_name(args.target)
-    payload = Path(args.payload).read_bytes()
+    payload_path = Path(args.payload)
+    try:
+        payload = payload_path.read_bytes()
+    except FileNotFoundError:
+        print(f"Error: payload file not found: {payload_path}", file=sys.stderr)
+        return 2
+    except PermissionError:
+        print(f"Error: permission denied reading: {payload_path}", file=sys.stderr)
+        return 2
+    except OSError as e:
+        print(f"Error reading payload file: {e}", file=sys.stderr)
+        return 2
+
     signature = _signature_from_args(args, payload, target_name)
     result = write_pytest_reproducer(
         ReproducerRequest(
@@ -250,6 +274,78 @@ def run_minimize_reports(args: argparse.Namespace) -> int:
     out = json.dumps({"processed": processed, "count": len(processed)}, indent=2, sort_keys=True)
     print(out)
     return 0
+
+
+def run_corpus_stats(args: argparse.Namespace) -> int:
+    """Display statistics about a corpus directory."""
+    import json as json_mod
+
+    corpus_paths = args.corpus or ["corpus"]
+    corpus = load_corpus([Path(p) for p in corpus_paths])
+
+    if not corpus:
+        stats = {
+            "paths": corpus_paths,
+            "total_files": 0,
+            "total_bytes": 0,
+            "message": "no corpus files found",
+        }
+        print(json_mod.dumps(stats, indent=2, sort_keys=True))
+        return 0
+
+    sizes = [len(data) for data in corpus]
+    total_bytes = sum(sizes)
+
+    # Analyze content types using heuristics
+    json_count = 0
+    graphql_count = 0
+    text_count = 0
+    binary_count = 0
+    for data in corpus:
+        try:
+            text = data.decode("utf-8")
+            stripped = text.strip()
+            # JSON detection: starts with { or [ and is valid-looking JSON structure
+            if stripped.startswith(("{", "[")):
+                json_count += 1
+            # GraphQL detection: requires multiple indicators (keyword + structure)
+            elif _is_graphql_like(stripped):
+                graphql_count += 1
+            else:
+                text_count += 1
+        except UnicodeDecodeError:
+            binary_count += 1
+
+    stats = {
+        "paths": corpus_paths,
+        "total_files": len(corpus),
+        "total_bytes": total_bytes,
+        "min_size": min(sizes),
+        "max_size": max(sizes),
+        "avg_size": round(total_bytes / len(corpus), 2),
+        "content_analysis": {
+            "json_like": json_count,
+            "graphql_like": graphql_count,
+            "text": text_count,
+            "binary": binary_count,
+        },
+    }
+    print(json_mod.dumps(stats, indent=2, sort_keys=True))
+    return 0
+
+
+def _is_graphql_like(text: str) -> bool:
+    """Heuristic to detect GraphQL-like documents.
+
+    Requires multiple indicators to avoid false positives:
+    - Must contain query/mutation/fragment keyword
+    - AND must contain GraphQL structure (selection sets with braces)
+    """
+    text_lower = text.lower()
+    has_keyword = any(kw in text_lower for kw in ("query ", "mutation ", "fragment ", "__schema"))
+    has_structure = "{" in text and "}" in text
+    return has_keyword and has_structure
+
 
 
 def make_parser() -> argparse.ArgumentParser:
@@ -338,6 +434,10 @@ def make_parser() -> argparse.ArgumentParser:
     minimize_reports.add_argument("--expected-message", default="")
     minimize_reports.add_argument("--max-rounds", type=int, default=8)
     minimize_reports.set_defaults(func=run_minimize_reports)
+
+    corpus_stats = sub.add_parser("corpus-stats", help="show corpus statistics and health check")
+    corpus_stats.add_argument("corpus", nargs="*", help="corpus files or directories")
+    corpus_stats.set_defaults(func=run_corpus_stats)
 
     radar = sub.add_parser("radar", help="show competitive radar")
     radar.add_argument("--format", choices=["markdown", "json"], default="markdown")

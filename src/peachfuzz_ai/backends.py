@@ -286,3 +286,20 @@ def backend_matrix_json(*, include_unsafe: bool = True) -> list[dict[str, object
         if include_unsafe or cap.safe_by_default:
             data.append(cap.to_dict())
     return data
+
+
+__all__ = [
+    "AtherisBackend",
+    "BackendAdapter",
+    "BackendCapabilities",
+    "BackendKind",
+    "BackendRunOutcome",
+    "BackendRunRequest",
+    "DeterministicBackend",
+    "ExternalSandboxBackend",
+    "PeachTraceBackend",
+    "backend_matrix_json",
+    "backend_matrix_markdown",
+    "backend_names",
+    "get_backend",
+]

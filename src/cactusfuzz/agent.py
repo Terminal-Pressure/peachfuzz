@@ -124,4 +124,13 @@ class CactusFuzzAgent:
 
     @staticmethod
     def to_json(findings: list[CactusFinding]) -> str:
+        """Serialize findings list to JSON string."""
         return json.dumps([f.to_dict() for f in findings], indent=2, sort_keys=True)
+
+
+__all__ = [
+    "AdversarialCase",
+    "CactusDecision",
+    "CactusFinding",
+    "CactusFuzzAgent",
+]

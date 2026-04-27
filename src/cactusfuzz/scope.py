@@ -104,6 +104,24 @@ def _try_parse_ip(value: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address |
 
 
 def normalize_host(value: str) -> str:
+    """Normalize a hostname or URL to a canonical form.
+
+    Strips whitespace, converts to lowercase, removes trailing dots,
+    and extracts the hostname from URLs.
+
+    Args:
+        value: Raw hostname or URL string.
+
+    Returns:
+        Normalized hostname.
+    """
     value = (value or "").strip().lower().rstrip(".")
     parsed = urlparse(value if "://" in value else f"//{value}")
     return (parsed.hostname or value).strip().lower().rstrip(".")
+
+
+__all__ = [
+    "AuthorizationScope",
+    "ScopeError",
+    "normalize_host",
+]

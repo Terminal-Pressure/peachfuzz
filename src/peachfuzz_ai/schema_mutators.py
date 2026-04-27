@@ -328,6 +328,17 @@ def kind_names() -> list[str]:
 
 
 def parse_kinds(raw: Iterable[str] | None) -> list[SchemaKind]:
+    """Parse schema kind strings into SchemaKind enums."""
     if not raw or "all" in raw:
         return list(SchemaKind)
     return [SchemaKind(item) for item in raw]
+
+
+__all__ = [
+    "CorpusWriteResult",
+    "SchemaAwareMutator",
+    "SchemaKind",
+    "SchemaSeed",
+    "kind_names",
+    "parse_kinds",
+]

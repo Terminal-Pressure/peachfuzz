@@ -120,3 +120,52 @@ class TestCLIMinimizeReports:
         data = json.loads(out)
         assert data["count"] == 0
         assert "no crash dir found" in data.get("message", "")
+
+
+class TestCLIMinimize:
+    """Tests for the 'minimize' subcommand error handling."""
+
+    def test_cli_minimize_missing_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """Minimize should return error code 2 for missing payload file."""
+        missing = tmp_path / "nonexistent.bin"
+        rc = main(["minimize", "--target", "bytes", "--output", str(tmp_path), str(missing)])
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "not found" in err.lower() or "error" in err.lower()
+
+
+class TestCLIReproduce:
+    """Tests for the 'reproduce' subcommand error handling."""
+
+    def test_cli_reproduce_missing_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """Reproduce should return error code 2 for missing payload file."""
+        missing = tmp_path / "nonexistent.bin"
+        rc = main(["reproduce", "--target", "bytes", "--output", str(tmp_path), str(missing)])
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "not found" in err.lower() or "error" in err.lower()
+
+
+class TestCLICorpusStats:
+    """Tests for the 'corpus-stats' subcommand."""
+
+    def test_corpus_stats_empty_dir(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """corpus-stats on empty dir should report zero files."""
+        rc = main(["corpus-stats", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["total_files"] == 0
+        assert "no corpus files found" in data.get("message", "")
+
+    def test_corpus_stats_with_files(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """corpus-stats should report file statistics."""
+        (tmp_path / "json.txt").write_bytes(b'{"endpoint": "/v1/test"}')
+        (tmp_path / "graphql.txt").write_bytes(b"query { users { name } }")
+        rc = main(["corpus-stats", str(tmp_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["total_files"] == 2
+        assert data["total_bytes"] > 0
+        assert "content_analysis" in data
