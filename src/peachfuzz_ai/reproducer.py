@@ -42,7 +42,7 @@ def sanitize_identifier(value: str) -> str:
     cleaned = re.sub(r"_+", "_", cleaned).strip("_")
     if not cleaned:
         cleaned = "payload"
-    if cleaned and cleaned[0].isdigit():
+    if cleaned[0].isdigit():
         cleaned = f"_{cleaned}"
     return cleaned
 
