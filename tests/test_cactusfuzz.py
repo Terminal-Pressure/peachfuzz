@@ -1,7 +1,7 @@
 import pytest
 
 from cactusfuzz.agent import AdversarialCase, CactusDecision, CactusFinding, CactusFuzzAgent
-from cactusfuzz.scope import AuthorizationScope, ScopeError
+from cactusfuzz.scope import AuthorizationScope, ScopeError, normalize_host
 
 
 class TestAuthorizationScope:
@@ -16,6 +16,59 @@ class TestAuthorizationScope:
     def test_scope_contains_lab_identifier(self) -> None:
         scope = AuthorizationScope(targets=("local-lab",))
         assert scope.contains("local-lab")
+
+    def test_scope_empty_target(self) -> None:
+        scope = AuthorizationScope(targets=("local-lab",))
+        assert not scope.contains("")
+
+    def test_scope_url_target(self) -> None:
+        scope = AuthorizationScope(targets=("example.com",))
+        assert scope.contains("https://example.com/path")
+        assert scope.contains("http://api.example.com:8080")
+
+    def test_scope_cidr_ipv4(self) -> None:
+        scope = AuthorizationScope(targets=("10.0.0.0/8",))
+        assert scope.contains("10.1.2.3")
+        assert not scope.contains("192.168.1.1")
+
+    def test_scope_invalid_cidr(self) -> None:
+        scope = AuthorizationScope(targets=("invalid/cidr",))
+        assert not scope.contains("192.168.1.1")
+
+    def test_scope_ip_address_match(self) -> None:
+        scope = AuthorizationScope(targets=("192.168.1.100",))
+        assert scope.contains("192.168.1.100")
+        assert not scope.contains("192.168.1.101")
+
+    def test_scope_normalized_targets(self) -> None:
+        scope = AuthorizationScope(targets=("  EXAMPLE.COM.  ", " ", ""))
+        normalized = scope.normalized_targets()
+        assert "example.com" in normalized
+
+    def test_require_authorized_raises(self) -> None:
+        scope = AuthorizationScope(targets=("local-lab",))
+        with pytest.raises(ScopeError, match="Target outside"):
+            scope.require_authorized("evil.com")
+
+    def test_require_authorized_passes(self) -> None:
+        scope = AuthorizationScope(targets=("local-lab",))
+        scope.require_authorized("local-lab")  # Should not raise
+
+
+class TestNormalizeHost:
+    """Tests for the normalize_host function."""
+
+    def test_normalize_host_basic(self) -> None:
+        assert normalize_host("EXAMPLE.COM") == "example.com"
+        assert normalize_host("example.com.") == "example.com"
+
+    def test_normalize_host_with_url(self) -> None:
+        assert normalize_host("https://example.com/path") == "example.com"
+        assert normalize_host("http://example.com:8080") == "example.com"
+
+    def test_normalize_host_empty(self) -> None:
+        assert normalize_host("") == ""
+        assert normalize_host("   ") == ""
 
 
 class TestCactusFinding:
