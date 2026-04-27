@@ -6,14 +6,26 @@ from urllib.parse import urlparse
 
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,7}\b")
 _IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-_ALLOWED_TARGETS = {"json", "findings", "bytes", "openapi", "graphql", "webhook"}
+
+# Dynamically sync with the targets registry rather than hardcoding
+_ALLOWED_TARGETS: frozenset[str] | None = None
+
+
+def _get_allowed_targets() -> frozenset[str]:
+    """Lazy-load allowed targets from the registry to avoid circular imports."""
+    global _ALLOWED_TARGETS
+    if _ALLOWED_TARGETS is None:
+        from .targets import target_names
+        _ALLOWED_TARGETS = frozenset(target_names())
+    return _ALLOWED_TARGETS
 
 
 def validate_target_name(target_name: str) -> str:
     """Allow only local registered targets."""
     cleaned = (target_name or "").strip().lower()
-    if cleaned not in _ALLOWED_TARGETS:
-        raise ValueError(f"Unknown target '{target_name}'. Valid targets: {sorted(_ALLOWED_TARGETS)}")
+    allowed = _get_allowed_targets()
+    if cleaned not in allowed:
+        raise ValueError(f"Unknown target '{target_name}'. Valid targets: {sorted(allowed)}")
     return cleaned
 
 
