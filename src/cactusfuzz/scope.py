@@ -45,7 +45,10 @@ class AuthorizationScope:
         return False
 
     def _matches_scope(
-        self, host: str, target_ip: ipaddress.IPv4Address | ipaddress.IPv6Address | None, raw_scope: str
+        self,
+        host: str,
+        target_ip: ipaddress.IPv4Address | ipaddress.IPv6Address | None,
+        raw_scope: str,
     ) -> bool:
         """Check if host matches a single scope entry."""
         # Explicit lab aliases such as "local-lab" are valid for offline simulation.

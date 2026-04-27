@@ -224,7 +224,7 @@ class ExternalSandboxBackend:
         requires_authorization=True,
     )
 
-    def run(self, request: BackendRunRequest) -> BackendRunOutcome:
+    def run(self, request: BackendRunRequest) -> BackendRunOutcome:  # noqa: ARG002
         return BackendRunOutcome(
             backend=self.capabilities.name,
             result=None,
