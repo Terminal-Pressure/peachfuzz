@@ -139,7 +139,7 @@ def get_target(name: str) -> Callable[[bytes], None]:
         raise ValueError(f"Unknown fuzz target: {name}") from exc
 
 
-def target_names(include_experimental: bool = False) -> list[str]:
+def target_names() -> list[str]:
     """Return sorted list of available target names."""
     return sorted(_TARGETS)
 
