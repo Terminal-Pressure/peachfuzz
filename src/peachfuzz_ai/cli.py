@@ -296,19 +296,23 @@ def run_corpus_stats(args: argparse.Namespace) -> int:
     sizes = [len(data) for data in corpus]
     total_bytes = sum(sizes)
 
-    # Analyze content types
+    # Analyze content types using heuristics
     json_count = 0
     graphql_count = 0
+    text_count = 0
     binary_count = 0
     for data in corpus:
         try:
             text = data.decode("utf-8")
-            if text.strip().startswith(("{", "[")):
+            stripped = text.strip()
+            # JSON detection: starts with { or [ and is valid-looking JSON structure
+            if stripped.startswith(("{", "[")):
                 json_count += 1
-            elif "query" in text.lower() or "mutation" in text.lower() or "{" in text:
+            # GraphQL detection: requires multiple indicators (keyword + structure)
+            elif _is_graphql_like(stripped):
                 graphql_count += 1
             else:
-                binary_count += 1
+                text_count += 1
         except UnicodeDecodeError:
             binary_count += 1
 
@@ -322,11 +326,26 @@ def run_corpus_stats(args: argparse.Namespace) -> int:
         "content_analysis": {
             "json_like": json_count,
             "graphql_like": graphql_count,
+            "text": text_count,
             "binary": binary_count,
         },
     }
     print(json_mod.dumps(stats, indent=2, sort_keys=True))
     return 0
+
+
+def _is_graphql_like(text: str) -> bool:
+    """Heuristic to detect GraphQL-like documents.
+
+    Requires multiple indicators to avoid false positives:
+    - Must contain query/mutation/fragment keyword
+    - AND must contain GraphQL structure (selection sets with braces)
+    """
+    text_lower = text.lower()
+    has_keyword = any(kw in text_lower for kw in ("query ", "mutation ", "fragment ", "__schema"))
+    has_structure = "{" in text and "}" in text
+    return has_keyword and has_structure
+
 
 
 def make_parser() -> argparse.ArgumentParser:
