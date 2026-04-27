@@ -264,7 +264,7 @@ def get_backend(name: str) -> BackendAdapter:
 
 def backend_matrix_markdown(*, include_unsafe: bool = True) -> str:
     """Render backend safety matrix."""
-    header = "| Backend | Kind | Coverage | In-proc | Safe default | Sandbox | Desc |"
+    header = "| Backend | Kind | Coverage | In-proc | Safe default | Sandbox | Description |"
     rows = [header, "|---|---|---:|---:|---:|---:|---|"]
     for name in sorted(_BACKENDS):
         cap = _BACKENDS[name].capabilities

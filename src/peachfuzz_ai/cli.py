@@ -279,7 +279,7 @@ def make_parser() -> argparse.ArgumentParser:
     trace.set_defaults(func=run_peachtrace)
 
     ath = sub.add_parser(
-        "atheris", help="legacy optional Atheris fuzzing; prefer --backend peachtrace"
+        "atheris", help="legacy Atheris fuzzing; prefer: peachfuzz run --backend peachtrace"
     )
     ath.add_argument("--target", choices=target_names(), required=True)
     ath.add_argument("corpus", nargs="*", type=Path)
