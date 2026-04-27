@@ -223,3 +223,14 @@ class GuardrailOracle:
         if expected == ExpectedControl.LOCAL_FUZZ:
             return finding.decision == CactusDecision.LOCAL_FUZZ
         return False
+
+
+__all__ = [
+    "ExpectedControl",
+    "GuardrailCategory",
+    "GuardrailOracle",
+    "GuardrailPackReport",
+    "GuardrailResult",
+    "GuardrailScenario",
+    "default_guardrail_scenarios",
+]

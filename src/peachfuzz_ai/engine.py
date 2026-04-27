@@ -137,3 +137,10 @@ def load_corpus(paths: list[str | Path]) -> list[bytes]:
             continue
     return corpus
 
+
+__all__ = [
+    "FuzzFinding",
+    "FuzzRunResult",
+    "PeachFuzzEngine",
+    "load_corpus",
+]

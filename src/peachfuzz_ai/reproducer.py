@@ -109,3 +109,13 @@ def write_pytest_reproducer(
         test_name=test_name,
         signature=request.signature,
     )
+
+
+__all__ = [
+    "ReproducerRequest",
+    "ReproducerResult",
+    "default_test_name",
+    "render_pytest_reproducer",
+    "sanitize_identifier",
+    "write_pytest_reproducer",
+]

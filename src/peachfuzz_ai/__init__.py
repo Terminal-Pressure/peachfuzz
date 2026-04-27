@@ -1,5 +1,11 @@
 """PeachFuzz AI defensive fuzzing harness."""
 from .backends import BackendRunOutcome, BackendRunRequest, get_backend
+from .constants import (
+    CRASH_SENTINEL,
+    DEFAULT_RUNS,
+    DEFAULT_SEED,
+    PAYLOAD_PREVIEW_LIMIT,
+)
 from .engine import FuzzFinding, FuzzRunResult, PeachFuzzEngine, load_corpus
 from .minimizer import DeltaMinimizer
 from .peachtrace import PeachTraceEngine
@@ -11,9 +17,13 @@ from .targets import get_target
 __all__ = [
     "BackendRunOutcome",
     "BackendRunRequest",
+    "CRASH_SENTINEL",
+    "DEFAULT_RUNS",
+    "DEFAULT_SEED",
     "DeltaMinimizer",
     "FuzzFinding",
     "FuzzRunResult",
+    "PAYLOAD_PREVIEW_LIMIT",
     "PeachFuzzEngine",
     "PeachTraceEngine",
     "SchemaAwareMutator",
